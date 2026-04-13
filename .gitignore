@@ -122,3 +122,7 @@ docker/opencode/opencode.jsonc
 .ai/qa/ephemeral*
 .ai/dev-ephemeral-envs.json
 .agents/
+
+# vuln-hunter — private pentest tooling, not for upstream
+.ai/skills/vuln-hunter/
+.ai/vuln-hunter-runs/
