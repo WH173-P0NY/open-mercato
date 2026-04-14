@@ -8,9 +8,19 @@
  *   3. OPENAI_API_KEY   — OpenAI (whisper-1)
  *
  * Optional env vars:
- *   WHISPER_API_KEY   — Bearer token for self-hosted (if required)
- *   WHISPER_MODEL     — Model override for self-hosted and Groq providers
+ *   WHISPER_API_KEY              — Bearer token for self-hosted (if required)
+ *   WHISPER_MODEL                — Model override for self-hosted and Groq providers
+ *   VOICE_TRANSCRIPTION_DISABLED — Force-disable server-side transcription
+ *                                   so the client stays on WebSpeech even when
+ *                                   OPENAI_API_KEY / GROQ_API_KEY are present
+ *                                   for other features (OCR, embeddings, etc.)
  */
+
+function isTranscriptionDisabled(): boolean {
+  const raw = process.env.VOICE_TRANSCRIPTION_DISABLED?.trim().toLowerCase()
+  if (!raw) return false
+  return raw === '1' || raw === 'true' || raw === 'yes'
+}
 
 export type TranscriptionProvider = {
   url: string
@@ -20,6 +30,8 @@ export type TranscriptionProvider = {
 }
 
 export function resolveProvider(): TranscriptionProvider | null {
+  if (isTranscriptionDisabled()) return null
+
   const customUrl = process.env.WHISPER_API_URL?.trim()
   if (customUrl) {
     const apiKey = process.env.WHISPER_API_KEY?.trim()
