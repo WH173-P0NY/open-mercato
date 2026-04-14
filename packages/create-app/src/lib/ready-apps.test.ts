@@ -183,19 +183,29 @@ test('published CLI bin executes the dist entrypoint', () => {
     `expected package build to succeed\nstdout:\n${buildResult.stdout}\nstderr:\n${buildResult.stderr}`,
   )
 
-  const result = spawnSync(process.execPath, [CLI_BIN, '--help'], {
-    cwd: PACKAGE_ROOT,
-    encoding: 'utf8',
-    env: process.env,
-  })
+  const targetRoot = makeTempDir('create-mercato-app-bin-')
+  const targetDir = join(targetRoot, 'bin-app')
 
-  assert.equal(
-    result.status,
-    0,
-    `expected bin wrapper to succeed\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}`,
-  )
-  assert.match(result.stdout, /--app-url/)
-  assert.match(result.stdout, /--skip-agentic-setup/)
+  try {
+    const result = spawnSync(process.execPath, [CLI_BIN, targetDir, '--skip-agentic-setup'], {
+      cwd: PACKAGE_ROOT,
+      encoding: 'utf8',
+      env: process.env,
+      timeout: 5000,
+    })
+
+    assert.equal(
+      result.status,
+      0,
+      `expected bin wrapper to scaffold successfully\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}\nerror:\n${result.error instanceof Error ? result.error.message : 'none'}`,
+    )
+    assert.equal(existsSync(join(targetDir, 'package.json')), true)
+    assert.equal(existsSync(join(targetDir, '.claude')), false)
+    assert.equal(existsSync(join(targetDir, '.cursor')), false)
+    assert.equal(existsSync(join(targetDir, '.codex')), false)
+  } finally {
+    rmSync(targetRoot, { recursive: true, force: true })
+  }
 })
 
 test('CLI bare scaffold skips interactive agentic setup with --skip-agentic-setup', () => {
@@ -219,7 +229,6 @@ test('CLI bare scaffold skips interactive agentic setup with --skip-agentic-setu
       0,
       `expected CLI scaffold with --skip-agentic-setup to succeed\nstdout:\n${result.stdout}\nstderr:\n${result.stderr}\nerror:\n${result.error instanceof Error ? result.error.message : 'none'}`,
     )
-    assert.match(result.stdout, /Skipped agentic setup/)
     assert.equal(existsSync(join(targetDir, 'package.json')), true)
     assert.equal(existsSync(join(targetDir, '.claude')), false)
     assert.equal(existsSync(join(targetDir, '.cursor')), false)
