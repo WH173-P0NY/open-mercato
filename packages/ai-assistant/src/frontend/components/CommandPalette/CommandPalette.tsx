@@ -14,6 +14,8 @@ import { CommandHeader } from './CommandHeader'
 import { CommandFooter } from './CommandFooter'
 import { ToolChatPage } from './ToolChatPage'
 import { DebugPanel } from './DebugPanel'
+import { VoiceMicButton } from './VoiceMicButton'
+import { useVoiceProvider } from '../../hooks/useVoiceProvider'
 
 // Idle state - shown when palette is open but no query submitted
 function IdleState() {
@@ -74,6 +76,7 @@ export function CommandPalette() {
     connectionStatus,
   } = state
 
+  const voiceProvider = useVoiceProvider()
   const [localInput, setLocalInput] = React.useState('')
   const [chatInput, setChatInput] = React.useState('')
   const chatInputRef = React.useRef<HTMLInputElement>(null)
@@ -188,6 +191,8 @@ export function CommandPalette() {
                 mode="commands"
                 isLoading={isLoading}
                 placeholder="Ask me anything or describe what you want to do..."
+                onVoiceTranscript={setLocalInput}
+                voiceProvider={voiceProvider}
               />
             )}
 
@@ -230,6 +235,11 @@ export function CommandPalette() {
                       'disabled:opacity-50'
                     )}
                     disabled={isStreaming}
+                  />
+                  <VoiceMicButton
+                    onTranscript={setChatInput}
+                    disabled={isStreaming}
+                    provider={voiceProvider}
                   />
                   <Button
                     type={isStreaming ? 'button' : 'submit'}

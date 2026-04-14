@@ -3,9 +3,11 @@
 import * as React from 'react'
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { Bot, Loader2, CheckCircle2, XCircle, ChevronDown, ChevronRight, Server, Wrench, Eye, EyeOff, Database, Link2, Settings, Key } from 'lucide-react'
+import { Bot, Loader2, CheckCircle2, XCircle, ChevronDown, ChevronRight, Server, Wrench, Eye, EyeOff, Database, Link2, Settings, Key, Mic } from 'lucide-react'
 import { Button } from '@open-mercato/ui/primitives/button'
 import { Switch } from '@open-mercato/ui/primitives/switch'
+import { apiCall } from '@open-mercato/ui/backend/utils/apiCall'
+import { useT } from '@open-mercato/shared/lib/i18n/context'
 import { useAiAssistantVisibility } from '../../../frontend/hooks/useAiAssistantVisibility'
 import McpConfigDialog from './McpConfigDialog'
 import SessionKeyDialog from './SessionKeyDialog'
@@ -44,6 +46,11 @@ type SettingsResponse = {
   mcpKeyConfigured: boolean
 }
 
+type TranscriptionResponse = {
+  available: boolean
+  provider?: 'self-hosted' | 'groq' | 'openai'
+}
+
 // Tool info type
 type ToolInfo = {
   name: string
@@ -71,7 +78,14 @@ async function fetchTools(): Promise<{ tools: ToolInfo[] }> {
   return res.json()
 }
 
+async function fetchTranscription(): Promise<TranscriptionResponse> {
+  const call = await apiCall<TranscriptionResponse>('/api/ai_assistant/transcribe')
+  if (!call.ok || !call.result) return { available: false }
+  return call.result
+}
+
 function AiAssistantSettingsContent() {
+  const t = useT()
   const [toolsExpanded, setToolsExpanded] = useState(false)
   const [mcpConfigOpen, setMcpConfigOpen] = useState(false)
   const [sessionKeyOpen, setSessionKeyOpen] = useState(false)
@@ -104,6 +118,13 @@ function AiAssistantSettingsContent() {
     staleTime: 60000,
   })
 
+  // Transcription availability - no polling needed (static server config)
+  const transcriptionQuery = useQuery({
+    queryKey: ['ai-assistant', 'transcription'],
+    queryFn: fetchTranscription,
+    staleTime: 60000,
+  })
+
   const isLoading = healthQuery.isLoading || settingsQuery.isLoading || toolsQuery.isLoading
 
   if (isLoading) {
@@ -118,6 +139,13 @@ function AiAssistantSettingsContent() {
   const health = healthQuery.data
   const settings = settingsQuery.data
   const tools = toolsQuery.data?.tools || []
+  const transcription = transcriptionQuery.data
+
+  const transcriptionProviderLabel: Record<string, string> = {
+    'self-hosted': t('ai_assistant.transcription.provider.self-hosted', 'Self-hosted (WHISPER_API_URL)'),
+    groq: t('ai_assistant.transcription.provider.groq', 'Groq (GROQ_API_KEY)'),
+    openai: t('ai_assistant.transcription.provider.openai', 'OpenAI (OPENAI_API_KEY)'),
+  }
 
   // Group tools by module
   const toolsByModule = tools.reduce<Record<string, ToolInfo[]>>((acc, tool) => {
@@ -364,6 +392,42 @@ function AiAssistantSettingsContent() {
               </span>
             )}
           </div>
+        </div>
+
+        {/* Voice Transcription Status */}
+        <div className="mt-4 p-3 rounded-md bg-muted/30 border">
+          <div className="flex items-center gap-2 text-sm">
+            <Mic className="h-4 w-4 text-muted-foreground" />
+            <span className="font-medium">{t('ai_assistant.transcription.label', 'Voice Transcription:')}</span>
+            {transcription?.available ? (
+              <>
+                <span className="font-medium">
+                  {transcription.provider
+                    ? transcriptionProviderLabel[transcription.provider]
+                    : t('ai_assistant.transcription.configured', 'Configured')}
+                </span>
+                <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400 text-xs">
+                  <CheckCircle2 className="h-3 w-3" />
+                  {t('ai_assistant.transcription.active', 'active')}
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="font-medium text-muted-foreground">
+                  {t('ai_assistant.transcription.not_configured', 'Not configured')}
+                </span>
+                <span className="flex items-center gap-1 text-amber-600 dark:text-amber-400 text-xs">
+                  <XCircle className="h-3 w-3" />
+                  {t('ai_assistant.transcription.setup_hint', 'set WHISPER_API_URL, GROQ_API_KEY, or OPENAI_API_KEY')}
+                </span>
+              </>
+            )}
+          </div>
+          <p className="text-xs text-muted-foreground mt-1 ml-6">
+            {transcription?.available
+              ? t('ai_assistant.transcription.ready_hint', 'Mic button uses server-side transcription (works in all browsers).')
+              : t('ai_assistant.transcription.fallback_hint', 'Without configuration, mic button falls back to browser Web Speech API (Chrome/Edge only).')}
+          </p>
         </div>
 
         <p className="text-xs text-muted-foreground mt-4">

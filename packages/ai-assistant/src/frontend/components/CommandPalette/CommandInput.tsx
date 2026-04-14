@@ -5,6 +5,8 @@ import { Command } from 'cmdk'
 import { Search, MessageSquare, Loader2 } from 'lucide-react'
 import { cn } from '@open-mercato/shared/lib/utils'
 import type { CommandPaletteMode } from '../../types'
+import type { VoiceTranscriptionProvider } from '../../lib/voice-transcription'
+import { VoiceMicButton } from './VoiceMicButton'
 
 interface CommandInputProps {
   value: string
@@ -12,9 +14,21 @@ interface CommandInputProps {
   mode: CommandPaletteMode
   isLoading?: boolean
   placeholder?: string
+  onVoiceTranscript?: (value: string) => void
+  voiceDisabled?: boolean
+  voiceProvider?: VoiceTranscriptionProvider
 }
 
-export function CommandInput({ value, onValueChange, mode, isLoading, placeholder }: CommandInputProps) {
+export function CommandInput({
+  value,
+  onValueChange,
+  mode,
+  isLoading,
+  placeholder,
+  onVoiceTranscript,
+  voiceDisabled,
+  voiceProvider,
+}: CommandInputProps) {
   const defaultPlaceholder = mode === 'chat' ? 'Ask AI...' : 'Search commands or ask AI...'
 
   return (
@@ -45,6 +59,14 @@ export function CommandInput({ value, onValueChange, mode, isLoading, placeholde
           AI
         </span>
       )}
+
+      {onVoiceTranscript ? (
+        <VoiceMicButton
+          onTranscript={onVoiceTranscript}
+          disabled={voiceDisabled}
+          provider={voiceProvider}
+        />
+      ) : null}
     </div>
   )
 }
