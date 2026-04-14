@@ -87,8 +87,23 @@ export async function POST(req: NextRequest) {
 
   if (!response.ok) {
     const errorText = await response.text().catch(() => 'unknown')
-    console.error(`[AI Transcribe] ${provider.name} error:`, response.status, errorText)
-    return NextResponse.json({ error: 'Transcription failed' }, { status: 502 })
+    console.error(`[AI Transcribe] ${provider.name} ${response.status}:`, errorText)
+    let detail: string | undefined
+    try {
+      const parsed = JSON.parse(errorText) as { error?: { message?: string } | string }
+      detail = typeof parsed.error === 'string' ? parsed.error : parsed.error?.message
+    } catch {
+      detail = errorText.slice(0, 500)
+    }
+    return NextResponse.json(
+      {
+        error: 'Transcription failed',
+        provider: provider.name,
+        providerStatus: response.status,
+        detail,
+      },
+      { status: 502 },
+    )
   }
 
   const data = await response.json() as { text?: string }

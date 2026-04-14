@@ -298,11 +298,16 @@ export class WhisperProvider implements VoiceTranscriptionProvider {
   }
 
   stopListening(): void {
-    this.abortRequested = true
     if (this.mediaRecorder?.state === 'recording') {
+      // Natural stop — let onstop fire and forward the captured audio
+      // to /api/ai_assistant/transcribe. Do NOT set abortRequested here,
+      // otherwise the chunks are discarded (see onstop handler).
       this.mediaRecorder.stop()
       return
     }
+    // Either still waiting for getUserMedia or never started recording.
+    // Mark as aborted so the pending getUserMedia.then() bails out.
+    this.abortRequested = true
     this.mediaRecorder = null
   }
 
@@ -322,7 +327,11 @@ export class WhisperProvider implements VoiceTranscriptionProvider {
   }
 
   private async sendToWhisper(chunks: Blob[], lang: string): Promise<void> {
-    if (chunks.length === 0) return
+    if (chunks.length === 0) {
+      console.warn('[Whisper] No audio captured — nothing to transcribe')
+      this.emitError('unknown')
+      return
+    }
 
     const audioBlob = new Blob(chunks, { type: this.mimeType || 'audio/webm' })
     const body = new FormData()
@@ -332,13 +341,19 @@ export class WhisperProvider implements VoiceTranscriptionProvider {
     if (languageCode) body.append('language', languageCode)
 
     try {
-      const call = await apiCall<{ transcript?: string }>('/api/ai_assistant/transcribe', {
+      const call = await apiCall<{
+        transcript?: string
+        error?: string
+        provider?: string
+        providerStatus?: number
+        detail?: string
+      }>('/api/ai_assistant/transcribe', {
         method: 'POST',
         body,
       }, {
         parse: async (res) => {
           try {
-            return (await res.json()) as { transcript?: string }
+            return await res.json()
           } catch {
             return null
           }
@@ -346,15 +361,29 @@ export class WhisperProvider implements VoiceTranscriptionProvider {
       })
 
       if (!call.ok) {
-        this.emitError(call.status === 503 ? 'not_supported' : 'network')
+        console.error(
+          `[Whisper] ${call.status} from /api/ai_assistant/transcribe:`,
+          call.result ?? '(no body)',
+        )
+        if (call.status === 401 || call.status === 403) {
+          this.emitError('permission_denied')
+        } else if (call.status === 503) {
+          this.emitError('not_supported')
+        } else {
+          this.emitError('network')
+        }
         return
       }
 
       const transcript = call.result?.transcript?.trim() ?? ''
       if (transcript) {
         this.emitFinal(transcript)
+      } else {
+        console.warn('[Whisper] Server returned empty transcript')
+        this.emitError('unknown')
       }
-    } catch {
+    } catch (err) {
+      console.error('[Whisper] Unexpected error sending audio:', err)
       this.emitError('network')
     }
   }
