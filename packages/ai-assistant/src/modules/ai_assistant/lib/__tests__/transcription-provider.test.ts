@@ -10,6 +10,7 @@ describe('resolveProvider', () => {
     delete process.env.WHISPER_MODEL
     delete process.env.GROQ_API_KEY
     delete process.env.OPENAI_API_KEY
+    delete process.env.VOICE_TRANSCRIPTION_DISABLED
   })
 
   afterAll(() => {
