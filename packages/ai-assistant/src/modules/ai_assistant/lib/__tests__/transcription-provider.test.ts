@@ -119,4 +119,26 @@ describe('resolveProvider', () => {
     process.env.OPENAI_API_KEY = 'sk-test'
     expect(resolveProvider()?.name).toBe('openai')
   })
+
+  // ── VOICE_TRANSCRIPTION_DISABLED short-circuit ────────────────────────────
+
+  it('returns null when VOICE_TRANSCRIPTION_DISABLED=1, even if OPENAI_API_KEY is set', () => {
+    process.env.OPENAI_API_KEY = 'sk-test'
+    process.env.VOICE_TRANSCRIPTION_DISABLED = '1'
+    expect(resolveProvider()).toBeNull()
+  })
+
+  it('returns null when VOICE_TRANSCRIPTION_DISABLED=true (case-insensitive)', () => {
+    process.env.OPENAI_API_KEY = 'sk-test'
+    process.env.VOICE_TRANSCRIPTION_DISABLED = 'TRUE'
+    expect(resolveProvider()).toBeNull()
+  })
+
+  it('does not disable when VOICE_TRANSCRIPTION_DISABLED is empty or falsy', () => {
+    process.env.OPENAI_API_KEY = 'sk-test'
+    process.env.VOICE_TRANSCRIPTION_DISABLED = '0'
+    expect(resolveProvider()?.name).toBe('openai')
+    process.env.VOICE_TRANSCRIPTION_DISABLED = ''
+    expect(resolveProvider()?.name).toBe('openai')
+  })
 })
