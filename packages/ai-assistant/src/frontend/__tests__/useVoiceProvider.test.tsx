@@ -33,17 +33,39 @@ let root: ReturnType<typeof createRoot>
 
 const originalFetch = global.fetch
 
+const originalMediaDevicesDescriptor = Object.getOwnPropertyDescriptor(navigator, 'mediaDevices')
+const originalMediaRecorder = (window as typeof window & { MediaRecorder?: unknown }).MediaRecorder
+
+function stubMediaCaptureApis() {
+  Object.defineProperty(navigator, 'mediaDevices', {
+    configurable: true,
+    value: { getUserMedia: jest.fn().mockResolvedValue({}) },
+  })
+  ;(window as typeof window & { MediaRecorder?: unknown }).MediaRecorder = function () {} as unknown
+}
+
+function restoreMediaCaptureApis() {
+  if (originalMediaDevicesDescriptor) {
+    Object.defineProperty(navigator, 'mediaDevices', originalMediaDevicesDescriptor)
+  } else {
+    Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: undefined })
+  }
+  ;(window as typeof window & { MediaRecorder?: unknown }).MediaRecorder = originalMediaRecorder
+}
+
 beforeEach(() => {
   container = document.createElement('div')
   document.body.appendChild(container)
   root = createRoot(container)
   global.fetch = jest.fn()
+  stubMediaCaptureApis()
 })
 
 afterEach(() => {
   act(() => { root.unmount() })
   container.remove()
   global.fetch = originalFetch
+  restoreMediaCaptureApis()
 })
 
 // ── tests ─────────────────────────────────────────────────────────────────────
@@ -127,4 +149,22 @@ it('calls GET /api/ai_assistant/transcribe exactly once on mount', async () => {
   expect(global.fetch).toHaveBeenCalledTimes(1)
   const [url] = (global.fetch as jest.Mock).mock.calls[0] as [RequestInfo]
   expect(url).toBe('/api/ai_assistant/transcribe')
+})
+
+it('keeps WebSpeechProvider when the browser lacks MediaRecorder (no capability)', async () => {
+  Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: undefined })
+  ;(window as typeof window & { MediaRecorder?: unknown }).MediaRecorder = undefined
+
+  ;(global.fetch as jest.Mock).mockResolvedValue(
+    mockResponse({ available: true, provider: 'openai' }),
+  )
+
+  const kinds: ProviderKind[] = []
+
+  await act(async () => {
+    root.render(<ProviderHarness onKind={(k) => kinds.push(k)} />)
+  })
+
+  expect(kinds.at(-1)).toBe('webspeech')
+  expect(global.fetch).not.toHaveBeenCalled()
 })

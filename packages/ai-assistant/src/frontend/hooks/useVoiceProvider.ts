@@ -20,6 +20,14 @@ type TranscriptionAvailability = {
  * so the mic button records audio and sends it to OpenAI Whisper-1.
  * Otherwise falls back to the browser Web Speech API.
  */
+function browserSupportsMediaCapture(): boolean {
+  if (typeof navigator === 'undefined' || typeof window === 'undefined') return false
+  const mediaDevices = (navigator as Navigator & { mediaDevices?: MediaDevices }).mediaDevices
+  if (!mediaDevices || typeof mediaDevices.getUserMedia !== 'function') return false
+  const MediaRecorderCtor = (window as typeof window & { MediaRecorder?: typeof MediaRecorder }).MediaRecorder
+  return typeof MediaRecorderCtor === 'function'
+}
+
 export function useVoiceProvider(): VoiceTranscriptionProvider {
   const [provider, setProvider] = React.useState<VoiceTranscriptionProvider>(
     () => new WebSpeechProvider(),
@@ -27,6 +35,13 @@ export function useVoiceProvider(): VoiceTranscriptionProvider {
 
   React.useEffect(() => {
     let cancelled = false
+
+    // Guard: WhisperProvider relies on navigator.mediaDevices.getUserMedia and
+    // window.MediaRecorder. In browsers where either is missing (older Safari,
+    // iOS WebView, missing mic permission before prompt), swapping away from
+    // WebSpeechProvider would leave the user with a non-functional mic. Keep
+    // the WebSpeech fallback instead.
+    if (!browserSupportsMediaCapture()) return
 
     apiCall<TranscriptionAvailability>('/api/ai_assistant/transcribe', undefined, {
       parse: async (res) => {
