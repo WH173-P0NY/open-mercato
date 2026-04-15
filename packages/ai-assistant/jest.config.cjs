@@ -6,6 +6,10 @@ module.exports = {
   rootDir: '.',
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json'],
   moduleNameMapper: {
+    '^@open-mercato/shared$': '<rootDir>/../shared/src/index.ts',
+    '^@open-mercato/shared/(.*)$': '<rootDir>/../shared/src/$1',
+    '^@open-mercato/ui$': '<rootDir>/../ui/src/index.ts',
+    '^@open-mercato/ui/(.*)$': '<rootDir>/../ui/src/$1',
     '^@open-mercato/ai-assistant/(.*)$': '<rootDir>/src/$1',
   },
   transform: {

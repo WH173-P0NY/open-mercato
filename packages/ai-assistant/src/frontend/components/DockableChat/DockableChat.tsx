@@ -23,7 +23,9 @@ import { CommandHeader } from '../CommandPalette/CommandHeader'
 import { CommandFooter } from '../CommandPalette/CommandFooter'
 import { ToolChatPage } from '../CommandPalette/ToolChatPage'
 import { DebugPanel } from '../CommandPalette/DebugPanel'
+import { VoiceMicButton } from '../CommandPalette/VoiceMicButton'
 import { AiDot } from '../AiDot'
+import { useVoiceProvider } from '../../hooks/useVoiceProvider'
 import type { DockPosition } from '../../types'
 import { useDockPosition } from '../../hooks/useDockPosition'
 
@@ -159,6 +161,7 @@ export function DockableChat() {
     connectionStatus,
   } = state
 
+  const voiceProvider = useVoiceProvider()
   const [localInput, setLocalInput] = React.useState('')
   const [chatInput, setChatInput] = React.useState('')
   const chatInputRef = React.useRef<HTMLInputElement>(null)
@@ -281,6 +284,8 @@ export function DockableChat() {
                 mode="commands"
                 isLoading={isLoading}
                 placeholder={t('ai_assistant.chat.placeholder')}
+                onVoiceTranscript={setLocalInput}
+                voiceProvider={voiceProvider}
               />
             )}
 
@@ -319,6 +324,11 @@ export function DockableChat() {
                       'disabled:opacity-50'
                     )}
                     disabled={isStreaming}
+                  />
+                  <VoiceMicButton
+                    onTranscript={setChatInput}
+                    disabled={isStreaming}
+                    provider={voiceProvider}
                   />
                   <Button
                     type={isStreaming ? 'button' : 'submit'}
@@ -440,6 +450,8 @@ export function DockableChat() {
                 mode="commands"
                 isLoading={isLoading}
                 placeholder={t('ai_assistant.chat.placeholder')}
+                onVoiceTranscript={setLocalInput}
+                voiceProvider={voiceProvider}
               />
             )}
 
@@ -478,6 +490,11 @@ export function DockableChat() {
                       'disabled:opacity-50'
                     )}
                     disabled={isStreaming}
+                  />
+                  <VoiceMicButton
+                    onTranscript={setChatInput}
+                    disabled={isStreaming}
+                    provider={voiceProvider}
                   />
                   <Button
                     type={isStreaming ? 'button' : 'submit'}
